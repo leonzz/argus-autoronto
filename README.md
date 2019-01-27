@@ -11,6 +11,8 @@ Names in alphabetical order:
 ## System Diagram
 ![System Overview](argus-overview.svg)
 
+Diagram created with [Draw.io](https://www.draw.io/)
+
 ## Components:
 
 - ROS connector: the C++/C# interface that read data from ROS topics and send over to the Unity C# runtime.
