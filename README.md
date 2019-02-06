@@ -26,3 +26,13 @@ Diagram created with [Draw.io](https://www.draw.io/)
     - obstacle detection result
     - map image in a window (might be expandable)
   - Configuration: read in a config file (or with a button in the UI to set config at runtime) to choose which subset of data to render, size of the window etc.
+
+## Build and Run
+
+Dependencies in ubuntu to run Unity3D build:
+
+```
+sudo apt install libcanberra-gtk-module libcanberra-gtk3-module mesa-utils nux-tools
+```
+
+If running from a VM, make sure to enable 3D acceleration for it's graphics setting.
