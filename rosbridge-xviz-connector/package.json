@@ -1,0 +1,14 @@
+{
+    "name": "rosbridge-xviz-connector",
+    "description": "A data proxy that reads from rosbridge and writes to xviz",
+    "version": "0.1.0",
+    "scripts": {
+        "start": "node ./index.js"
+    },
+    "dependencies": {
+        "roslib": "^1.0.0",
+        "@xviz/builder": "^1.0.0-beta",
+        "argparse": "^1.0.10",
+        "ws": "^5.2.1"
+    }
+}
