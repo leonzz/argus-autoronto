@@ -22,22 +22,21 @@ process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
 rosBridgeClient.on('connection', function() {
-    console.log('Connected to websocket server.');
+    console.log('Connected to rosbridge websocket server.');
 });
 
 rosBridgeClient.on('error', function(error) {
-    console.log('Error connecting to websocket server: ', error);
+    console.log('Error connecting to rosbridge websocket server: ', error);
 });
 
 rosBridgeClient.on('close', function() {
-    console.log('Connection to websocket server closed.');
+    console.log('Connection to rosbridge websocket server closed.');
 });
 
 listener.subscribe(function(message) {
     // var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
-    // console.log("new msg (time, lat, lng): ", timestamp, message.latitude, message.longitude);
-    xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, parseFloat(timestamp));
+    xvizServer.updateLocation(message.header.seq, message.latitude, message.longitude, message.altitude, parseFloat(timestamp));
 });
 
 /* *******************************************
