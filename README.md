@@ -20,7 +20,7 @@ Diagram created with [Draw.io](https://www.draw.io/)
 
 - [`rosbridge-xviz-connector`](rosbridge-xviz-connector): A data proxy server that read from rosbridge-server and serves data in [XVIZ](https://github.com/uber/xviz) format, which is a opensource protocol from Uber to stream/visualize autonomy data.
 
-- GUI: A web UI based on Uber's [streetscape.gl](https://github.com/uber/streetscape.gl) which is specialized to visualize data in XVIZ format. Right now we are using the demo example from [streetscape.gl](https://github.com/uber/streetscape.gl/tree/master/examples/get-started) with some minor changes.
+- [GUI](gui): A web UI based on Uber's [streetscape.gl](https://github.com/uber/streetscape.gl) which is specialized to visualize data in XVIZ format. Right now we are using the demo example from [streetscape.gl](https://github.com/uber/streetscape.gl/tree/master/examples/get-started) with some minor changes.
 
 - Map Tile Server: A map tile server that reads local OpenStreemMap data files and serve map images to the GUI.
 
@@ -35,6 +35,7 @@ Note: If running from a VM, make sure to enable 3D acceleration for it's graphic
     ```
     cd gui
     # please run yarn install before the next command to download dependencies
+    export MapboxAccessToken=<your mapbox token>
     yarn start-live
     ```
 
