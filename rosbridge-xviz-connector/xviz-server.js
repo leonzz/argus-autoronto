@@ -5,33 +5,49 @@ const {XVIZMetadataBuilder, XVIZBuilder, encodeBinaryXVIZ} = require("@xviz/buil
 
 const xvizMetaBuider = new XVIZMetadataBuilder();
 // we only have one stream for pose(location) for now
-xvizMetaBuider.stream('/vehicle_pose').category("pose");
-//xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
+
+xvizMetaBuider
+//where we define the pose of the car based on the navsat data 
+	.stream('/vehicle_pose')
+	.category("pose")
+
+//what we will use to make plot the desired path of the car 
+
+	.stream('/Car_path')
+	.category('primitive')
+	.type('polygon');
+
 const _metadata = xvizMetaBuider.getMetadata();
 console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 const xvizBuilder = new XVIZBuilder({
     metadata: _metadata
 });
-//const _mockImage = require('fs').readFileSync("./mock.png");
+
+
+
 
 // Global cache for frames
 let _frameCache = new Map();
+let _frameCache2 = new Map();
 // Global counter and cache for connections
 let _connectionCounter = 1;
 let _connectionMap = new Map();
+let _connectionMap2 = new Map();
 // Global server object
 let _wss = null;
 
 function connectionId() {
   const id = _connectionCounter;
   _connectionCounter++;
-
   return id;
 }
 
 // add a new location message 
+
 function addLocationToFrame(frameNum, lat, lng, alt, time) {
-    let frame = _frameCache.get(frameNum);
+
+let frame = _frameCache.get(frameNum);
+
     if (frame) {
         frame.pose = {
             latitude: lat,
@@ -41,30 +57,56 @@ function addLocationToFrame(frameNum, lat, lng, alt, time) {
         };
     } else {
         _frameCache.set(frameNum, {
-            pose: {
+  	pose: {
                 latitude: lat,
                 longitude: lng,
                 altitude: alt,
-                timestamp: time
+		timestamp: time
+            }
+        });
+
+    }
+
+ console.log("new pose (frame, time, lat, lng): ", frameNum, time, lat, lng)
+}
+
+
+
+
+
+
+function generatePath(frameNum,Vertex){
+
+let path =  _frameCache2.get(frameNum);
+
+    if (path) {
+        path.primitive = {
+            polygon: Vertex
+        };
+    } else {
+        _frameCache.set(frameNum, {
+  	primitive: {
+                polygon: Vertex
             }
         });
     }
-    console.log("new pose (frame, time, lat, lng): ", frameNum, time, lat, lng);
+
+console.log("new path Vector, frame, position  ", frameNum,path);
+
 }
 
-// check if a frame is ready to serve (i.e. contains all streams of data)
-// and serve the frame to all xviz connections if it is ready
-function tryServeFrame(frameNum) {
+function tryServeFrame(frameNum){
     let frame = _frameCache.get(frameNum);
     // for now we only have location so as long as location data is ready, mark the frame ready
     if (frame && frame.pose) {
         // frame is ready, serve it to all live connections
-        xvizBuilder.pose('/vehicle_pose').timestamp(frame.pose.timestamp)
+	
+	//this line serves the meta data used for the pose of the car 
+       	    xvizBuilder.pose('/vehicle_pose').timestamp(frame.pose.timestamp)
             .mapOrigin(frame.pose.longitude, frame.pose.latitude, frame.pose.altitude)
             .position(0,0,0).orientation(0,0,0);
-        //xvizBuilder.primitive('/camera/image_00').image(_mockImage, "png");
-        const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
-        //console.log(`frame ${frameNum} is ready. `, xvizFrame);
+	const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
+      //  console.log(`frame ${frameNum} is ready. `, xvizFrame);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
         });
@@ -72,8 +114,30 @@ function tryServeFrame(frameNum) {
         _frameCache.delete(frameNum);
         return;
     }
+    return;	
+return;
+}
+
+// check if a frame is ready to serve (i.e. contains all streams of data)
+// and serve the frame to all xviz connections if it is ready
+function ShowPath(frameNum) {
+    let path = _frameCache2.get(frameNum);
+    // for now we only have location so as long as location data is ready, mark the frame ready
+    if (path) {
+       	    xvizBuilder.primitive('/Car_path').polygon(path.primitive.polygon)
+	const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
+      //  console.log(`frame ${frameNum} is ready. `, xvizFrame);
+        _connectionMap2.forEach((context, connectionId, map) => {
+            context.sendFrame(xvizFrame);
+        });
+        // after serve, delete frame from the cache
+        _frameCache2.delete(frameNum);
+        return;
+    }
     return;
 }
+
+
 
 class ConnectionContext {
     constructor() {
@@ -147,6 +211,7 @@ module.exports = {
             console.log("startListenOn can only be called one time")
             process.exit(-1);
         }
+
         _wss = new WebSocket.Server({port: portNum});
         // Setups initial connection state
         _wss.on('connection', ws => {
@@ -154,12 +219,26 @@ module.exports = {
             context.initConnection(ws);
         });
     },
+
     close: function(){
         console.log("xviz server shutting down");
         _wss.close();
     },
+
+//function which gets the rosbridge info for the new location of the car 
     updateLocation: function(frameNum, lat, lng, alt, time) {
-        addLocationToFrame(frameNum, lat, lng, alt, time);
+// function which will display the car path 
+       addLocationToFrame(frameNum, lat, lng, alt, time);
         tryServeFrame(frameNum);
-    }
+},
+
+
+   CarPath: function(frameNum,Vertex){
+	generatePath(frameNum,Vertex);
+	ShowPath(frameNum);
+	}
+
+
+
+
 };
