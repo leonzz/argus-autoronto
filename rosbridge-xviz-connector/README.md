@@ -44,3 +44,16 @@ You will need ROS installed in your system before doing the following steps. If 
     ## you should have done yarn install to get dependencies before running
     yarn start ## or node ./index.js
     ```
+
+
+## Reference Frames in XVIZ Protocol
+
+The official XVIZ documentation has no clear description of their reference frames. However through playing around with test data, we discovered that XVIZ use a right handed reference frame with fixed orientation:
+
+- Origin of the reference frame is given by a `MapOrigin` defined by `(latitude, longitude, altitude)`.
+
+- Y-axis always point to North.
+
+- X-axis always point to East.
+
+- Z-axis always point up vertically.

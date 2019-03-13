@@ -1,5 +1,5 @@
 const ROSLIB = require("roslib");
-const xvizServer = require('../xviz-server');
+const xvizServer = require('./xviz-server');
 
 // These variables represent the x,y,z values of the vector spline for the car path, Lg is the length of the vector and i is the index 
 var X= [],Y = [], Z = [], Lg, i,Vertex=[];
@@ -8,12 +8,13 @@ const rosBridgeClient = new ROSLIB.Ros({
     url : 'ws://localhost:9090'
 });
 
+// for location
 const listener = new ROSLIB.Topic({
     ros : rosBridgeClient,
     name : '/navsat/fix'
 });
 
-
+// for planned path
 const listener2 = new ROSLIB.Topic({
     ros : rosBridgeClient,
     name : '/PathPlanner/desired_path'
@@ -54,24 +55,23 @@ listener.subscribe(function(message) {
 });
 
 
-
 //listener 2 which is used to pipe the road information
-listener2.subscribe(function(message) {
+/* listener2.subscribe(function(message) {
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
 
-Lg =message.poses.length  
-// we will setup a for lop to find the value of x at every instance in the ros bag 
+    Lg =message.poses.length  
+    // we will setup a for loop to find the value of x at every instance in the ros bag 
 
-for( i = 0; i < Lg-1; i++){
-X[i]= message.poses[i].pose.position.x;
-Y[i]= message.poses[i].pose.position.y;
-Z[i]= message.poses[i].pose.position.z;
+    for( i = 0; i < Lg-1; i++){
+    X[i]= message.poses[i].pose.position.x;
+    Y[i]= message.poses[i].pose.position.y;
+    Z[i]= message.poses[i].pose.position.z;
 
 
-Vertex[i] = [X[i], Y[i], Z[i] ];
-}
-    xvizServer.CarPath(message.header.seq,Vertex);
-});
+    Vertex[i] = [X[i], Y[i], Z[i] ];
+    }
+    xvizServer.updateCarPath(message.header.seq,Vertex);
+}); */
 
 
 
