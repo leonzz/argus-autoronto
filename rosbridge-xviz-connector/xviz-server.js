@@ -5,13 +5,22 @@ const {XVIZMetadataBuilder, XVIZBuilder, encodeBinaryXVIZ} = require("@xviz/buil
 
 const xvizMetaBuider = new XVIZMetadataBuilder();
 // we only have one stream for pose(location) for now
-xvizMetaBuider.stream('/vehicle_pose').category("pose");
-//xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
+
+//where we define the pose of the car based on the navsat data 
+xvizMetaBuider.stream('/vehicle_pose')
+	.category("pose");
+//what we will use to make plot the desired path of the car 
+xvizMetaBuider.stream('/vehicle/trajectory')
+	.category('primitive')
+    .type('polyline');
+xvizMetaBuider.stream('/camera/image_01').category("primitive").type("image");
 const _metadata = xvizMetaBuider.getMetadata();
 console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
-const xvizBuilder = new XVIZBuilder({
-    metadata: _metadata
-});
+// it turns out we cannot use a constant global builder, as all the primitives keeps adding up
+//const xvizBuilder = new XVIZBuilder({
+//    metadata: _metadata
+//});
+
 //const _mockImage = require('fs').readFileSync("./mock.png");
 
 // Global cache for frames
@@ -19,61 +28,111 @@ let _frameCache = new Map();
 // Global counter and cache for connections
 let _connectionCounter = 1;
 let _connectionMap = new Map();
+let _connectionMap2 = new Map();
 // Global server object
 let _wss = null;
 
 function connectionId() {
   const id = _connectionCounter;
   _connectionCounter++;
-
   return id;
 }
 
 // add a new location message 
+
 function addLocationToFrame(frameNum, lat, lng, alt, time) {
+
     let frame = _frameCache.get(frameNum);
+    let lastframe = _frameCache.get(frameNum-1);
+    let heading = 0;
+    if (lastframe) {
+        // calculate heading based on current and previous location
+        // ref: http://www.movable-type.co.uk/scripts/latlong.html
+        let λ1 = lastframe.pose.longitude * 3.1415926 / 180;
+        let λ2 = lng * 3.1415926 / 180;
+        let φ1 = lastframe.pose.latitude * 3.1415926 / 180;
+        let φ2 = lat * 3.1415926 / 180;
+        let y = Math.sin(λ2-λ1) * Math.cos(φ2);
+        let x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(λ2-λ1);
+        heading = Math.atan2(y, x);
+    }
     if (frame) {
         frame.pose = {
             latitude: lat,
             longitude: lng,
             altitude: alt,
-            timestamp: time
+            timestamp: time,
+            heading: heading
         };
     } else {
         _frameCache.set(frameNum, {
-            pose: {
+  	        pose: {
                 latitude: lat,
                 longitude: lng,
                 altitude: alt,
-                timestamp: time
+                timestamp: time,
+                heading: heading
+            }
+        });
+
+    }
+
+    console.log("new pose (frame, time, lat, lng, heading): ", frameNum, time, lat, lng, heading)
+}
+
+
+function addCarPathToFrame(frameNum,Vertex){
+
+    let frame =  _frameCache.get(frameNum);
+
+    if (frame) {
+        frame.pathplan = {
+            polygon: Vertex
+        };
+    } else {
+        _frameCache.set(frameNum, {
+            pathplan: {
+                polygon: Vertex
             }
         });
     }
-    console.log("new pose (frame, time, lat, lng): ", frameNum, time, lat, lng);
+
+    console.log("new path Vector, frame, position  ", frameNum);
+
 }
 
-// check if a frame is ready to serve (i.e. contains all streams of data)
-// and serve the frame to all xviz connections if it is ready
-function tryServeFrame(frameNum) {
+function tryServeFrame(frameNum){
     let frame = _frameCache.get(frameNum);
     // for now we only have location so as long as location data is ready, mark the frame ready
-    if (frame && frame.pose) {
+    //console.log("try serve ", frameNum,frame);
+    if (frame && frame.pose /*&& frame.pathplan*/) {
         // frame is ready, serve it to all live connections
+        //console.log("serving", frameNum);
+        //this line serves the meta data used for the pose of the car
+        let xvizBuilder = new XVIZBuilder({metadata: _metadata});
         xvizBuilder.pose('/vehicle_pose').timestamp(frame.pose.timestamp)
             .mapOrigin(frame.pose.longitude, frame.pose.latitude, frame.pose.altitude)
-            .position(0,0,0).orientation(0,0,0);
-        //xvizBuilder.primitive('/camera/image_00').image(_mockImage, "png");
-        const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
+            .position(0,0,0).orientation(0,0,1.57-frame.pose.heading);
+        xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(1.57-frame.pose.heading), 2*Math.sin(1.57-frame.pose.heading), 0], [10*Math.cos(1.57-frame.pose.heading), 10*Math.sin(1.57-frame.pose.heading), 0]]).style({
+            stroke_color: '#009500',//rgba(0, 150, 0, 0.3)
+            stroke_width: 1.5
+        });
+        //xvizBuilder.primitive('/camera/image_01').image(_mockImage, "jpg").dimensions(500, 231);
+	    const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
         //console.log(`frame ${frameNum} is ready. `, xvizFrame);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
         });
-        // after serve, delete frame from the cache
-        _frameCache.delete(frameNum);
+        // after serve, delete the previous frame from the cache
+        // so the cache always store 2 frames in history
+        _frameCache.delete(frameNum-1);
+        //console.log(frameNum-1, "deleted")
         return;
     }
     return;
 }
+
+
 
 class ConnectionContext {
     constructor() {
@@ -147,6 +206,7 @@ module.exports = {
             console.log("startListenOn can only be called one time")
             process.exit(-1);
         }
+
         _wss = new WebSocket.Server({port: portNum});
         // Setups initial connection state
         _wss.on('connection', ws => {
@@ -154,12 +214,20 @@ module.exports = {
             context.initConnection(ws);
         });
     },
+
     close: function(){
         console.log("xviz server shutting down");
         _wss.close();
     },
+
     updateLocation: function(frameNum, lat, lng, alt, time) {
         addLocationToFrame(frameNum, lat, lng, alt, time);
         tryServeFrame(frameNum);
+    },
+
+    updateCarPath: function(frameNum,Vertex) {
+        addCarPathToFrame(frameNum,Vertex);
+        //tryServeFrame(frameNum);
     }
+
 };
