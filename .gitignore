@@ -2,3 +2,6 @@
 .DS_Store
 /project-data/
 node_modules/
+reports/*.aux
+reports/*.log
+reports/*.out
