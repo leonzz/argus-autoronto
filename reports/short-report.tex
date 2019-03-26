@@ -16,7 +16,7 @@
 
 This project is aimed to develop a graphical user interface (GUI) to visualize autonomous vehicle data to help monitoring, debugging, and demoing the auto-drive system.
 
-Data to be visualized include: a) raw sensor data, e.g. locations coming from GPS and IMU, and camera images; b) preprocessed data from the control system, e.g. planned path , and recognized objects; c) prior knowlwdge, e.g. a 3D model of our hosting vehicle, and a map of the environment where it is running in. A major goal is to create a pipeline from our data sources and the rendering engine of our choice, to enable data visualization in a well organized and maintainable way.
+Data to be visualized include: a) raw sensor data, e.g. locations coming from GPS and IMU, and camera images; b) preprocessed data from the control system, e.g. planned path , and recognized objects; c) prior knowlwdge, e.g. a 3D model of our hosting vehicle, and a map of the environment where it is running in. One of the major goals is to create a pipeline from the auToronto core system to the rendering engine of our choice, and enable data visualization in a well organized and maintainable way.
 
 \section{System Architecture}
 
@@ -29,23 +29,21 @@ Data to be visualized include: a) raw sensor data, e.g. locations coming from GP
 
 \subsection{Competing Approaches and Design Choices}
 
-In the design phase (Januray, 2019) we have reviewed several GUI solutions for other self driving systems like Google's Waymo, Baidu's Apollo and Uber. Among those solutions, only Apollo was open-sourced but their documentation was very limited. Therefore, we decided to write our own rendering system with Unity 3D, a leading 3D game engine with \verb!C#! as its programming language and capable of cross compiling for Linux.
+In the design phase (Januray, 2019) we reviewed several GUI solutions for other self driving systems, such as Google's Waymo, Baidu's Apollo and Uber. Among those solutions, only Apollo was open-sourced however their documentation was very limited. We therefore decided to write our own rendering system with Unity 3D, a leading 3D game engine with \verb!C#! as its programming language and capable of cross compiling for Linux.
 
-However, with Uber open-sourcing their GUI solution in Feburary 19, 2019 \cite{ubernews}, writing our own rendering logic became less attractive since Uber's solution has the following advantages: a) Professionally implemented and documented by a major company; b) Based on web technologies ;therefore,  easily customizable and easy to use with only a browser as rendering client.
+However, with Uber open-sourcing their GUI solution in Feburary 19, 2019 \cite{ubernews}, writing our own rendering logic became less attractive since Uber's solution has the following advantages: a) Professionally implemented and documented by a major company; b) Based on web technologies, therefore easily customizable and easy to use with only a browser as a rendering client.
 
-The web based Uber solution only provides javascript bindings and websocket streaming; nevertheless, we needed a way to pipe our data from ROS systems into the frontend. Fortunately,  ROS community has an open-source package called rosbridge \cite{rosbridge} that exposes ROS topics via websocket in JSON format. Though rosbridge has its own formatting that differs with Uber, the websocket API enables easy format conversion in javascript. For these reasons, we use this approach in our final design.
+The web based Uber solution only provides javascript bindings and websocket streaming; nevertheless, we needed a way to pipe our data from ROS systems into the frontend. Fortunately, ROS community has an open-source package called rosbridge \cite{rosbridge} that exposes ROS topics via websocket in JSON format. Though rosbridge has its own formatting that differs with Uber, the websocket API enables easy format conversion in javascript. For these reasons, we use this approach in our final design.
 
 \section{Technical Solution}
 
-As shown in Figure \ref{fig:sys-arch}, our GUI system consistes of mainly 4 parts:
+As shown in Figure \ref{fig:sys-arch}, our GUI system consistes of 4 main parts:
 
 \textbf{Web UI}: a web application built with Uber's streetscape.gl \cite{streetscapegl}, which is a WebGL and React based visualization client package and a part of Uber's open-source solution mentioned in previous section. It runs in a browser, and consumes data over a websocket connection to a XVIZ data streaming server. 
 
-\textbf{rosbridge-xviz-connector}: A data proxy server that reads from rosbridge-server and serves data in XVIZ format. It is built with the rosbridge client package and the XVIZ server package. XVIZ is another part in the Uber solution that defines a protocol to stream autonomous vehicle data and also provides a collection of libraries that implement the protocol.
+\textbf{rosbridge-xviz-connector}: A data proxy server that reads from rosbridge-server and serves data in XVIZ format. It is built with the rosbridge client package and the XVIZ server package. XVIZ is another part in the Uber solution that defines a protocol to stream autonomous vehicle data and also provides a collection of libraries that implement the protocol. The core logic of the rosbridge-xviz-connector is to cache and synchronize the data streams coming from the rosbridge server that provides different ROS topics. It then converts data format to XVIZ and serves data to the Web UI.
 
-The core logic of the rosbridge-xviz-connector is to cache and synchronize the data streams coming from the rosbridge server that provides different ROS topics. It then converts data format to XVIZ and serves data to the Web UI.
-
-\textbf{rosbridge-server and aUToronto Core system}: as discussed in previous section, we use rosbridge to get data from the core control system running on ROS, and pipe data through a websocket connection to the rosbridge-xviz-connector.
+\textbf{rosbridge-server and aUToronto Core system}: we use rosbridge to get data from the core control system running on ROS and pipe data through a websocket connection to the rosbridge-xviz-connector.
 
 \textbf{Map Tile Server}: the original streetscape.gl UI uses mapbox.com as its default map provider. However, with a need for customized and more accurate map data, we use an open-source tool called TileServerGL \cite{vectortile1} to render maps from raw map data files in OSM (OpenStreetMap) format. Figure \ref{fig:map-flow} describes the flow to generate vector tiles from raw OSM data. Vector tiles contain vector data instead of pixel image tiles, with geometries and metadata — like road names, place names, house numbers — in a compact, structured format. Vector tiles are rendered only when requested by a client, in this case our Web UI running in a browser. 
 
@@ -56,7 +54,7 @@ The core logic of the rosbridge-xviz-connector is to cache and synchronize the d
   \label{fig:map-flow}
 \end{figure}
 
-\section{Progresses and Results}
+\section{Progress and Results}
 
 \begin{figure}[hb]
   \centering
@@ -65,7 +63,7 @@ The core logic of the rosbridge-xviz-connector is to cache and synchronize the d
   \label{fig:screenshot}
 \end{figure}
 
-We have developed our code (available in github \cite{github}) to implement the data pipeline and the system is able to show a vechile in a map served by our own map tile server. Visualizations of planned path and camera image are also in progress.
+We have developed our code (available in github \cite{github}) to implement the data pipeline. The system is able to show a vechile moving in a map served by our own map tile server. Visualizations of planned path and camera images are also in progress.
 
 \begin{thebibliography}{7}
 
