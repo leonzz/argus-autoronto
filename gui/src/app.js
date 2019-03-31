@@ -72,8 +72,6 @@ class Example extends PureComponent {
         <div id="control-panel">
           <XVIZPanel log={log} name="Camera" />
           <hr />
-          <XVIZPanel log={log} name="Metrics" />
-          <hr />
           <Form
             data={APP_SETTINGS}
             values={this.state.settings}
@@ -89,35 +87,6 @@ class Example extends PureComponent {
               car={CAR}
               xvizStyles={XVIZ_STYLE}
               viewMode={VIEW_MODE[settings.viewMode]}
-            />
-            <div id="hud">
-              <TurnSignalWidget log={log} streamName="/vehicle/turn_signal" />
-              <hr />
-              <TrafficLightWidget log={log} streamName="/vehicle/traffic_light" />
-              <hr />
-              <MeterWidget
-                log={log}
-                streamName="/vehicle/acceleration"
-                label="Acceleration"
-                min={-4}
-                max={4}
-              />
-              <hr />
-              <MeterWidget
-                log={log}
-                streamName="/vehicle/velocity"
-                label="Speed"
-                getWarning={x => (x > 6 ? 'FAST' : '')}
-                min={0}
-                max={20}
-              />
-            </div>
-          </div>
-          <div id="timeline">
-            <PlaybackControl
-              width="100%"
-              log={log}
-              formatTimestamp={x => new Date(x).toUTCString()}
             />
           </div>
         </div>

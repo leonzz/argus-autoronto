@@ -20,6 +20,12 @@ const listener2 = new ROSLIB.Topic({
     name : '/PathPlanner/desired_path'
 });
 
+// for camera image
+const listener3 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/blackfly/image_color/compressed'
+});
+
 
 xvizServer.startListenOn(8081);
 
@@ -27,6 +33,7 @@ function gracefulShutdown() {
     console.log("shutting down rosbridge-xviz-connector");
     listener.unsubscribe();
     listener2.unsubscribe();
+    listener3.unsubscribe();
     rosBridgeClient.close();
     xvizServer.close();
 }
@@ -54,6 +61,10 @@ listener.subscribe(function(message) {
     xvizServer.updateLocation(message.header.seq, message.latitude, message.longitude, message.altitude, parseFloat(timestamp));
 });
 
+listener3.subscribe(function(message) {
+  //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
+  xvizServer.updateCameraImage(message.data);
+});
 
 //listener 2 which is used to pipe the road information
 /* listener2.subscribe(function(message) {

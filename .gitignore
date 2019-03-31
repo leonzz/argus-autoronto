@@ -1,6 +1,7 @@
 /build/
 .DS_Store
 /project-data/
+/gui/dist/
 node_modules/
 reports/*.aux
 reports/*.log

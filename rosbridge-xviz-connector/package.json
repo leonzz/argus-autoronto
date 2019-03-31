@@ -10,5 +10,8 @@
         "@xviz/builder": "^1.0.0-beta",
         "argparse": "^1.0.10",
         "ws": "^5.2.1"
+    },
+    "devDependencies": {
+        "@xviz/parser": "^1.0.0-beta"
     }
 }

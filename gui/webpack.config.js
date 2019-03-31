@@ -28,7 +28,7 @@ const BABEL_CONFIG = {
 };
 
 const CONFIG = {
-  mode: 'development',
+  mode: 'production',
   entry: {
     app: resolve('./src/app.js')
   },
@@ -65,7 +65,7 @@ const CONFIG = {
   ]
 };
 
-module.exports = (env = {}) => {
+module.exports = (env = {live:true}) => {
   let config = Object.assign({}, CONFIG);
 
   // This switch between streaming and static file loading
