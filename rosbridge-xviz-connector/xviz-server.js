@@ -27,7 +27,6 @@ console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 
 // Global cache for location data
 let _locationCache = null;
-let _lastLocationCache = null;
 // cache and flag for camera image
 let _cameraImageCache = null;
 //let _newCameraImageFlag = false;
@@ -45,27 +44,14 @@ function connectionId() {
 
 // add a new location message 
 
-function addLocationToCache(lat, lng, alt, time) {
+function addLocationToCache(lat, lng, alt, heading, time) {
 
-    let heading = 0;
-    if (_lastLocationCache) {
-        // calculate heading based on current and previous location
-        // ref: http://www.movable-type.co.uk/scripts/latlong.html
-        let λ1 = _lastLocationCache.longitude * 3.1415926 / 180;
-        let λ2 = lng * 3.1415926 / 180;
-        let φ1 = _lastLocationCache.latitude * 3.1415926 / 180;
-        let φ2 = lat * 3.1415926 / 180;
-        let y = Math.sin(λ2-λ1) * Math.cos(φ2);
-        let x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(λ2-λ1);
-        heading = Math.atan2(y, x);
-    }
-    _lastLocationCache = _locationCache;
     _locationCache = {
         latitude: lat,
         longitude: lng,
         altitude: alt,
         timestamp: time,
-        heading: heading
+        heading: 1.57+heading//90 degree of difference between xviz frame
     };
 
     console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
@@ -98,8 +84,8 @@ function tryServeFrame(){
         let xvizBuilder = new XVIZBuilder({metadata: _metadata});
         xvizBuilder.pose('/vehicle_pose').timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
-            .position(0,0,0).orientation(0,0,1.57-_locationCache.heading);
-        xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(1.57-_locationCache.heading), 2*Math.sin(1.57-_locationCache.heading), 0], [10*Math.cos(1.57-_locationCache.heading), 10*Math.sin(1.57-_locationCache.heading), 0]]).style({
+            .position(0,0,0).orientation(0,0,_locationCache.heading);
+        xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]).style({
             stroke_color: '#009500',//rgba(0, 150, 0, 0.3)
             stroke_width: 1.5
         });
@@ -211,8 +197,8 @@ module.exports = {
         _wss.close();
     },
 
-    updateLocation: function(frameNum, lat, lng, alt, time) {
-        addLocationToCache(lat, lng, alt, time);
+    updateLocation: function(lat, lng, alt, heading, time) {
+        addLocationToCache(lat, lng, alt, heading, time);
         
     },
 

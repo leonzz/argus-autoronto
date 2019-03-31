@@ -1,8 +1,7 @@
 const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
 
-// These variables represent the x,y,z values of the vector spline for the car path, Lg is the length of the vector and i is the index 
-var X= [],Y = [], Z = [], Lg, i,Vertex=[];
+var heading = 0;
 
 const rosBridgeClient = new ROSLIB.Ros({
     url : 'ws://localhost:9090'
@@ -26,6 +25,12 @@ const listener3 = new ROSLIB.Topic({
   name : '/blackfly/image_color/compressed'
 });
 
+// for orientation from IMU
+const listener5 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/imu/data'
+});
+
 
 xvizServer.startListenOn(8081);
 
@@ -34,6 +39,7 @@ function gracefulShutdown() {
     listener.unsubscribe();
     listener2.unsubscribe();
     listener3.unsubscribe();
+    listener5.unsubscribe();
     rosBridgeClient.close();
     xvizServer.close();
 }
@@ -58,12 +64,19 @@ rosBridgeClient.on('close', function() {
 listener.subscribe(function(message) {
     // var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
-    xvizServer.updateLocation(message.header.seq, message.latitude, message.longitude, message.altitude, parseFloat(timestamp));
+    xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, heading, parseFloat(timestamp));
 });
 
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
   xvizServer.updateCameraImage(message.data);
+});
+
+//listener 5 is the imu data for the car 
+listener5.subscribe(function (message) {
+   //heading = message.orientation.w;
+   // quaternion to heading (z component of euler angle) ref: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+   heading = Math.atan2( 2*( message.orientation.z * message.orientation.w + message.orientation.x * message.orientation.y), 1 - 2 * ( message.orientation.z * message.orientation.z + message.orientation.y * message.orientation.y ));
 });
 
 //listener 2 which is used to pipe the road information
