@@ -1,10 +1,11 @@
 const WebSocket = require('ws');
 const process = require('process');
 
+
 const {XVIZMetadataBuilder, XVIZBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
 
 // Variables used in the ProjectedPath function
-var memory = 0, index = 0, count= 0, Prev_Odom=[],T0=[], duration = [];
+var index = 0, count= 0, Prev_Odom=[],T0=[], duration = [];
 var test =[0];
 var Mod_Path = []; // This is the modified path to check that only numbers were obtained from the path planner 
 var j = 0; // index used to keep track of the actual number of points in the planned path which are non zero value 
@@ -156,8 +157,8 @@ function tryServeFrame(frameNum){
 
         //this is for displaying the positon of the obsatcle in space
 
-        if (frame.Objectposition.detected==1){                   
-            xvizBuilder.primitive('/Obstcale/position').polygon([[frame.Objectposition.x,frame.Objectposition.y,0],[frame.Objectposition.x+1,frame.Objectposition.y,0],[frame.Objectposition.x+1,frame.Objectposition.y+1,1],[frame.Objectposition.x,frame.Objectposition.y+1,1]]).style({
+        if (frame.Objectposition.detected == 1 && frame.Objectposition.x != 0){                   
+            xvizBuilder.primitive('/Obstcale/position').polygon([[frame.Objectposition.x, frame.Objectposition.y, 0],[frame.Objectposition.x, frame.Objectposition.y, 2],[frame.Objectposition.x + 1, frame.Objectposition.y+1, 2]]).style({
                 stroke_color: '#ff0000',//rgba(150, 0, 0, 0.3)
                 stroke_width: 1.5
             });
@@ -269,17 +270,9 @@ module.exports = {
     },
 
     updateLocation: function(frameNum, car_info, obs_info, Car_Odom,Car_Path, time) {
-
-
-
-
-       test = ProjectedPath(Car_Odom,Car_Path,time)
         
-      console.log(test);
-
-      Planned_Path = [0,0,0]
-
-
+        Planned_Path = ProjectedPath(Car_Odom,Car_Path,time)
+        
         addLocationToFrame(frameNum, car_info, obs_info, Planned_Path, time);
         tryServeFrame(frameNum);
 
@@ -291,68 +284,35 @@ module.exports = {
 
 function ProjectedPath(Car_Odom,Car_Path,time){
    
-    /*This is where we define the number of points which will make up the size of the path seen by XViz. If you can to reduce aliasing of the line increase the number of rows. 
-    For this example the predicted path will have 3 points: 
-    P1 = [0,0,0] since the x,y,z value are relative to the position of the car setting them to zero sticks the predicted path at the origin of the car. 
-    P2 = [x2,y2,z2]
-    P3 = [X3,y3,z3] 
-
-    Both P2 and P3 are adjustable depending on where we want to index the path planner Ros topic. For now P3 is index 10 which is 2m away from the car. 
-
-*/
-
-    var  i, Lg ;
+    var  i, j,Lg, Lg_Odom ;
     var Look_Ahead_dist = 5; //this is the distance for 1m  
     var points = 8; // change this if you want the car to have more or less points. The more points you add the further the car will look in the future. 
+    
+    Lg = Car_Path.length;
+    Lg_Odom = Car_Odom.length;
     var Path = [];
+    var Path_Point=[];
+
     
-    Lg = Car_Path.length; // overall length of predicted path. 
-    //Lg = 103; //Only the first 103 items have the path info (found experimentally)
- 
+    for (i = 0; i <= Lg - 1; i++) {
 
 
-    //This loop is meant to only extract points which are not NaN. 
-    for (j = 0; j <= Lg; j++){
-        if (Number.isNaN(Car_Path(j) == false)){
-            Mod_Path[j] = Car_Path[j];
-        }
+
+            for (j = 0; j <= Lg_Odom - 1; j++) {
+                Path_Point[j] = Car_Path[i][j] - Car_Odom[j];
+
+            }
+            //check if a point exists behind the car
+        if (Path_Point[0] < 0) {
+           //console.log(Path_Point[0])
+            Path[i] = [0, 0, 0];
+        } else {
+        Path[i] = [Path_Point[0], Path_Point[1], 0] 
+                }
+
+
+
+        
     }
-    
-
-
-    /*
-    if(T0==0){
-
-        T0 = time;
-    }
-        
-    duration = time -T0;
-        //check if the elpased time is greater than one second
-    if (duration - memory >1){
-        memory = duration;
-   
-        //only increase the projected path when the car is moving
-        if (Car_Odom[0]>0){
-            count = count +1; // this counter is used to increment the look ahead distance once a delta of 1s occurs. 
-               
-        }
-        }
-
-    if (index <= Lg){
-        
-        //this generates a path as long as the number of points I wish to display
-        for ( i = 1; i <= points; i ++ ){
-          // setting this at 0,0,0 will always make the path start at the base of the car 
-          Path[0] = [0,0,0];           
-         
-          index = count+i*Look_Ahead_dist;
-          Path[i] = Car_Path[index];
-        }
-        
-        
-
-    }
-        
-        */
     return Path;
 }

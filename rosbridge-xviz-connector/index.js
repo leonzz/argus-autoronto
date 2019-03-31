@@ -8,7 +8,7 @@ var X = [0], Y = [0], Z = [0],i=0, k =[], Vertex = [] ;
 
 
 //these variables set up the projected car path of the car 
-var CarPath = [];
+var CarPath = [], X_path = [], Y_path = [], Z_path = [];
 
 // these variables will be used to store the map infromation for objects in the car FOV. 
 var obs_lat = [0], obs_long = [0], Found_object = 0, obs_info = [0]; obs_UTM = [0];
@@ -110,7 +110,7 @@ listener.subscribe(function(message) {
 
     //ful list of car info in format latitude, longitude, altitude
     car_info = [ car_lat, car_lon, car_alt, W];
-    xvizServer.updateLocation(message.header.seq, car_info, obs_info, car_odom, CarPath, parseFloat(timestamp));
+    xvizServer.updateLocation(message.header.seq, car_info, obs_info, car_UTM, CarPath, parseFloat(timestamp));
 });
 
 //listener 2 which is used to pipe the road information
@@ -118,27 +118,24 @@ listener2.subscribe(function (message) {
 
 
     Lg = message.poses.length;
+    var i = 0;
 
-//Grab the first instance of position. The projected path will be a delta of UTM positions or where the car will be in space relative to the position at time= t1
-
-    X0 = message.poses[0].pose.position.x;
-    Y0 = message.poses[0].pose.position.y;
-    Z0 = message.poses[0].pose.position.z;
-
-    var X_path = new Float64Array(Lg); 
-    var Y_path = new Float64Array(Lg);
-    var Z_path = new Float64Array(Lg);
-   //This function can be pulled out of here but I have not had time to do this. 
-        for (var j = 1; j <= Lg-1; j++) {
-
-            X_path[j-1] = message.poses[j].pose.position.x-X0;
-            Y_path[j-1] = message.poses[j].pose.position.y-Y0;
-            Z_path[j-1] = message.poses[j].pose.position.z-Z0;
-
-            CarPath[j - 1] = [X_path[j - 1], Y_path[j - 1], Z_path[j - 1]];
-        }
-
-
+    for (j = 0; j <= Lg - 1; j++) {
+        //extract all the values from the path planner
+        X_path[j] = message.poses[j].pose.position.x;
+        Y_path[j] = message.poses[j].pose.position.y;
+        Z_path[j] = message.poses[j].pose.position.z;
+        
+        //This loop is meant to only extract points which have a valid value. 
+        if (typeof X_path[j] === 'number') {
+            if (typeof Y_path[j] === 'number') {
+                if (typeof Z_path[j] === 'number') {
+                    CarPath[j] = [X_path[j], Y_path[j], Z_path[j]];
+                }
+            }
+           }   
+    }
+ 
 });
 
 //listener 3 is the information of an object in the path of the car 
@@ -176,10 +173,10 @@ listener4.subscribe(function (message) {
            }
 
 // we remove the initial position to get the relative motion of the car from time t0 
-    car_x = message.pose.pose.position.x - car_x0;
-    car_y = message.pose.pose.position.y - car_y0;
-    car_z = message.pose.pose.position.z - car_z0;
-
+    car_x = message.pose.pose.position.x;
+    car_y = message.pose.pose.position.y;
+    car_z = message.pose.pose.position.z;
+   
     car_odom = [car_x, car_y, car_z];
 
 
