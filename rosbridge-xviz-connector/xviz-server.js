@@ -12,7 +12,11 @@ xvizMetaBuider.stream('/vehicle_pose')
 //what we will use to make plot the desired path of the car 
 xvizMetaBuider.stream('/vehicle/trajectory')
 	.category('primitive')
-    .type('polyline');
+    .type('polyline').streamStyle({
+        stroke_color: '#47B27588',// a nice transparent green
+        stroke_width: 1.5,
+        stroke_width_min_pixels: 1
+    });
 xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
@@ -85,10 +89,7 @@ function tryServeFrame(){
         xvizBuilder.pose('/vehicle_pose').timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0).orientation(0,0,_locationCache.heading);
-        xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]).style({
-            stroke_color: '#009500',//rgba(0, 150, 0, 0.3)
-            stroke_width: 1.5
-        });
+        xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]);
         if (_cameraImageCache)
         {
             xvizBuilder.primitive('/camera/image_00').image(_cameraImageCache, "jpg");

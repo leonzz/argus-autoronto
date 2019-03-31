@@ -4,7 +4,6 @@
   "version": "0.1.0",
   "scripts": {
     "start": "webpack-dev-server --progress --hot --open",
-    "start-streaming": "webpack-dev-server --env.stream --progress --hot --open",
     "start-live": "webpack-dev-server --env.live --progress --hot --open",
     "build": "webpack --config webpack.config.js && cp mapbox-gl.css index.html dist/"
   },

@@ -74,10 +74,10 @@ module.exports = (env = {live:true}) => {
     new webpack.DefinePlugin({__IS_LIVE__: JSON.stringify(Boolean(env.live))})
   ]);
 
-  if (env.local) {
+  //if (env.local) {
     // This line enables bundling against src in this repo rather than installed module
-    config = require('../webpack.config.local')(config)(env);
-  }
+  //  config = require('../webpack.config.local')(config)(env);
+  //}
 
   return config;
 };

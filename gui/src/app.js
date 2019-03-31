@@ -23,6 +23,7 @@
 import React, {PureComponent} from 'react';
 import {render} from 'react-dom';
 
+import {XVIZLiveLoader} from 'streetscape.gl';
 import {setXVIZConfig} from '@xviz/parser';
 import {
   LogViewer,
@@ -39,12 +40,16 @@ import {XVIZ_CONFIG, APP_SETTINGS, MAPBOX_TOKEN, MAP_STYLE, XVIZ_STYLE, CAR} fro
 
 setXVIZConfig(XVIZ_CONFIG);
 
-// __IS_STREAMING__ and __IS_LIVE__ are defined in webpack.config.js
-const exampleLog = require(__IS_STREAMING__
-  ? './log-from-stream'
-  : __IS_LIVE__
-    ? './log-from-live'
-    : './log-from-file').default;
+const exampleLog = new XVIZLiveLoader({
+  logGuid: 'mock',
+  bufferLength: 4,
+  serverConfig: {
+    defaultLogLength: 5,
+    serverUrl: 'ws://localhost:8081'
+  },
+  worker: true,
+  maxConcurrency: 2
+});
 
 class Example extends PureComponent {
   state = {

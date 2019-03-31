@@ -32,19 +32,26 @@ Note: If running from a VM, make sure to enable 3D acceleration for it's graphic
 
 2. Start the GUI
 
+    For best performance, use `cd gui && yarn build` to build the webpage into `gui/dist/` folder and then open `gui/dist/index.html` with a browser.
+
+    Or optionally, use the following step to run a dev server for easier debugging:
+
     ```
     cd gui
     # please run yarn install before the next command to download dependencies
     export MapboxAccessToken=<your mapbox token>
-    yarn start-live
+
+    # to run the dev server with debugging capability:
+    yarn start
     ```
 
     A browser window will automatically open and connect to the server from step 1.
 
+
 3. In developement/simulation mode, play the rosbag to start piping in data, e.g.
 
     ```
-    rosbag play /mnt/hgfs/argus-autoronto/project-data/_2019-01-18-15-19-31_public_roads.ba
+    rosbag play /mnt/hgfs/argus-autoronto/project-data/_2019-01-18-15-19-31_public_roads.bag
     ```
 
 4. After starting the rosbag, if the UI is not updated, refresh the browser window. Since some rosbag recordings are very short, be sensitive to the timing of refresh and play.
