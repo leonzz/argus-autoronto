@@ -23,7 +23,7 @@ xvizMetaBuider.stream('/tracklets/objects')
     .type('polygon').streamStyle({
         "extrude": true,
         "fill_color": "#50B3FF80",
-		"stroke_color": "#50B3FF"
+		"stroke_color": "#FF0000"
     });
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
@@ -66,28 +66,7 @@ function addLocationToCache(lat, lng, alt, heading, time) {
         timestamp: time,
         heading: 1.57+heading//90 degree of difference between xviz frame
     };
-    console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
-}
-
-
-function addCarPathToFrame(frameNum,Vertex){
-
-    let frame =  _frameCache.get(frameNum);
-
-    if (frame) {
-        frame.pathplan = {
-            polygon: Vertex
-        };
-    } else {
-        _frameCache.set(frameNum, {
-            pathplan: {
-                polygon: Vertex
-            }
-        });
-    }
-
-    console.log("new path Vector, frame, position  ", frameNum);
-
+    //console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
 }
 
 function tryServeFrame(){
@@ -129,8 +108,6 @@ function tryServeFrame(){
     }
     return;
 }
-
-
 
 class ConnectionContext {
     constructor() {
@@ -197,7 +174,7 @@ class ConnectionContext {
         } else {
             this.ws.send(frame, {compress: true});
         }
-        this.log("< sent frame.")
+        //this.log(`< sent frame.`);
     }
 }
 
