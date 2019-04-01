@@ -8,7 +8,8 @@ const xvizUIBuilder = new XVIZUIBuilder({});
 
 //where we define the pose of the car based on the navsat data 
 xvizMetaBuider.stream('/vehicle_pose')
-	.category("pose");
+    .category("pose");
+    xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
 //what we will use to make plot the desired path of the car 
 xvizMetaBuider.stream('/vehicle/trajectory')
 	.category('primitive')
@@ -17,7 +18,13 @@ xvizMetaBuider.stream('/vehicle/trajectory')
         stroke_width: 1.5,
         stroke_width_min_pixels: 1
     });
-xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
+xvizMetaBuider.stream('/tracklets/objects')
+	.category('primitive')
+    .type('polygon').streamStyle({
+        "extrude": true,
+        "fill_color": "#50B3FF80",
+		"stroke_color": "#50B3FF"
+    });
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
@@ -29,8 +36,10 @@ console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 
 //const _mockImage = require('fs').readFileSync("./mock.jpg").toString('base64');
 
-// Global cache for location data
+// Global cache for location and trajectory
 let _locationCache = null;
+let _trajectoryCache = null;
+let _ObstaclesCache = null;
 // cache and flag for camera image
 let _cameraImageCache = null;
 //let _newCameraImageFlag = false;
@@ -57,7 +66,6 @@ function addLocationToCache(lat, lng, alt, heading, time) {
         timestamp: time,
         heading: 1.57+heading//90 degree of difference between xviz frame
     };
-
     console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
 }
 
@@ -89,16 +97,32 @@ function tryServeFrame(){
         xvizBuilder.pose('/vehicle_pose').timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0).orientation(0,0,_locationCache.heading);
-        xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]);
+        if (_trajectoryCache) {
+            xvizBuilder.primitive('/vehicle/trajectory').polyline(_trajectoryCache);
+        } else {
+            //xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]);
+        }
+        if (_ObstaclesCache) {
+            //console.log("obstacle!!!", _ObstaclesCache[0]);
+            for (i=0;i<_ObstaclesCache.length;i++){
+                // build triangle around that obstacle location
+                xvizBuilder.primitive('/tracklets/objects').polygon([
+                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0],
+                    [_ObstaclesCache[i][0]+0.3, _ObstaclesCache[i][1]-0.3, 0],
+                    [_ObstaclesCache[i][0], _ObstaclesCache[i][1]+0.424, 0],
+                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0]
+                ]).style({height:1.5});
+            }
+        }
         if (_cameraImageCache)
         {
             xvizBuilder.primitive('/camera/image_00').image(_cameraImageCache, "jpg");
             //_newCameraImageFlag = false;
-            console.log("serving image ", _cameraImageCache.length);
+            //console.log("serving image ", _cameraImageCache.length);
         }
         //const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(),{});
         const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
-        //console.log(`frame ${frameNum} is ready. `, xvizFrame);
+        //console.log( xvizFrame);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
         });
@@ -203,13 +227,16 @@ module.exports = {
         
     },
 
-    updateCarPath: function(frameNum,Vertex) {
-        addCarPathToFrame(frameNum,Vertex);
-        //tryServeFrame(frameNum);
+    updateCarPath: function(positions) {
+        _trajectoryCache = positions;
+    },
+
+    updateObstacles: function(positions) {
+        _ObstaclesCache = positions;
     },
 
     updateCameraImage: function(imagedata) {
-        console.log("new image ", imagedata.length);
+        //console.log("new image ", imagedata.length);
         _cameraImageCache = imagedata;
         //_newCameraImageFlag = true;
         tryServeFrame();
