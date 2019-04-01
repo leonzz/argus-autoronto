@@ -33,7 +33,7 @@ export const CAR = CarMesh.sedan({
   length: 4.3,
   width: 2.2,
   height: 1.5,
-  color: [160, 160, 160]
+  color: [255, 160, 160]
 });
 
 export const APP_SETTINGS = {

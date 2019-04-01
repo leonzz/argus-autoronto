@@ -28,7 +28,7 @@ const BABEL_CONFIG = {
 };
 
 const CONFIG = {
-  mode: 'development',
+  mode: 'production',
   entry: {
     app: resolve('./src/app.js')
   },
@@ -65,7 +65,7 @@ const CONFIG = {
   ]
 };
 
-module.exports = (env = {}) => {
+module.exports = (env = {live:true}) => {
   let config = Object.assign({}, CONFIG);
 
   // This switch between streaming and static file loading
@@ -74,10 +74,10 @@ module.exports = (env = {}) => {
     new webpack.DefinePlugin({__IS_LIVE__: JSON.stringify(Boolean(env.live))})
   ]);
 
-  if (env.local) {
+  //if (env.local) {
     // This line enables bundling against src in this repo rather than installed module
-    config = require('../webpack.config.local')(config)(env);
-  }
+  //  config = require('../webpack.config.local')(config)(env);
+  //}
 
   return config;
 };

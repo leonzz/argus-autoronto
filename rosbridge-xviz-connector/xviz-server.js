@@ -1,38 +1,32 @@
 const WebSocket = require('ws');
 const process = require('process');
 
-
-const {XVIZMetadataBuilder, XVIZBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
-
-// Variables used in the ProjectedPath function
-var index = 0, count= 0, Prev_Odom=[],T0=[], duration = [];
-var test =[0];
-var Mod_Path = []; // This is the modified path to check that only numbers were obtained from the path planner 
-var j = 0; // index used to keep track of the actual number of points in the planned path which are non zero value 
-
+const {XVIZMetadataBuilder, XVIZBuilder, XVIZUIBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
 
 const xvizMetaBuider = new XVIZMetadataBuilder();
-// we only have one stream for pose(location) for now
+const xvizUIBuilder = new XVIZUIBuilder({});
 
 //where we define the pose of the car based on the navsat data 
 xvizMetaBuider.stream('/vehicle_pose')
-	.category("pose");
+    .category("pose");
+    xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
 //what we will use to make plot the desired path of the car 
 xvizMetaBuider.stream('/vehicle/trajectory')
 	.category('primitive')
-    .type('polygon');
-
-
-// adding one more to show a box to represent the object seen by the car 
-xvizMetaBuider.stream('/Obstcale/position')
+    .type('polyline').streamStyle({
+        stroke_color: '#47B27588',// a nice transparent green
+        stroke_width: 1.5,
+        stroke_width_min_pixels: 1
+    });
+xvizMetaBuider.stream('/tracklets/objects')
 	.category('primitive')
-    .type('polyline');
-
-
-
-
-
-xvizMetaBuider.stream('/camera/image_01').category("primitive").type("image");
+    .type('polygon').streamStyle({
+        "extrude": true,
+        "fill_color": "#50B3FF80",
+		"stroke_color": "#50B3FF"
+    });
+xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
+xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
 console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 // it turns out we cannot use a constant global builder, as all the primitives keeps adding up
@@ -40,14 +34,18 @@ console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 //    metadata: _metadata
 //});
 
-//const _mockImage = require('fs').readFileSync("./mock.png");
+//const _mockImage = require('fs').readFileSync("./mock.jpg").toString('base64');
 
-// Global cache for frames
-let _frameCache = new Map();
+// Global cache for location and trajectory
+let _locationCache = null;
+let _trajectoryCache = null;
+let _ObstaclesCache = null;
+// cache and flag for camera image
+let _cameraImageCache = null;
+//let _newCameraImageFlag = false;
 // Global counter and cache for connections
 let _connectionCounter = 1;
 let _connectionMap = new Map();
-let _connectionMap2 = new Map();
 // Global server object
 let _wss = null;
 
@@ -59,124 +57,75 @@ function connectionId() {
 
 // add a new location message 
 
-function addLocationToFrame(frameNum, car_info, obs_info, CarPath, time) {
+function addLocationToCache(lat, lng, alt, heading, time) {
 
-    let frame = _frameCache.get(frameNum);
-    let lastframe = _frameCache.get(frameNum-1);
-    let heading = 0;
-    
-    
-    
-    if (lastframe) {
-        // calculate heading based on current and previous location
-        // ref: http://www.movable-type.co.uk/scripts/latlong.html
-        let λ1 = lastframe.pose.longitude * 3.1415926 / 180;
-        let λ2 = car_info[1]* 3.1415926 / 180;
-        let φ1 = lastframe.pose.latitude * 3.1415926 / 180;
-        let φ2 = car_info[0] * 3.1415926 / 180;
-        let y = Math.sin(λ2-λ1) * Math.cos(φ2);
-        let x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(λ2-λ1);
-        heading = Math.atan2(y, x);    
-    }
+    _locationCache = {
+        latitude: lat,
+        longitude: lng,
+        altitude: alt,
+        timestamp: time,
+        heading: 1.57+heading//90 degree of difference between xviz frame
+    };
+    console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
+}
 
-    //this will set the vehicle log, lat, alt for it to be displayed in the map
+
+function addCarPathToFrame(frameNum,Vertex){
+
+    let frame =  _frameCache.get(frameNum);
+
     if (frame) {
-
-        //car pose info 
-        frame.pose = {
-            latitude: car_info[0],
-            longitude: car_info[1],
-            altitude: car_info[2],
-            timestamp: time,
-            heading: 5/3*Math.PI+car_info[3]
-        };
-
-        //object pose info 
-        frame.Objectpose = {
-            latitude: obs_info[0],
-            longitude: obs_info[1],
-            altitude: obs_info[2],
-            timestamp: time,
-            detected: obs_info[3]
-        };
-
-       //car path information:
-        frame.ProjectedPosition = {
-            point : CarPath
+        frame.pathplan = {
+            polygon: Vertex
         };
     } else {
         _frameCache.set(frameNum, {
-            pose: {
-                latitude: car_info[0],
-                longitude: car_info[1],
-                altitude: car_info[2],
-                timestamp: time,
-                heading: 5/3*Math.PI+car_info[3]
-            },
-
-            Objectposition: {
-                x: obs_info[0],
-                y: obs_info[1],
-                z: obs_info[2],
-                timestamp: time,
-                detected: obs_info[3]
-            },
-            
-            ProjectedPosition: {
-                point : CarPath  
-            
+            pathplan: {
+                polygon: Vertex
             }
-       
         });
     }
 
-} 
- 
+    console.log("new path Vector, frame, position  ", frameNum);
 
-function tryServeFrame(frameNum){
-    let frame = _frameCache.get(frameNum);
-    // for now we only have location so as long as location data is ready, mark the frame ready
-    //console.log("try serve ", frameNum,frame);
+}
 
-    if (frame && frame.pose /*&& frame.pathplan*/) {
+function tryServeFrame(){
+    if (_locationCache) {
         // frame is ready, serve it to all live connections
-        //console.log("serving", frameNum);
-        
-        //this line serves the meta data used for the pose of the car
         let xvizBuilder = new XVIZBuilder({metadata: _metadata});
-        xvizBuilder.pose('/vehicle_pose').timestamp(frame.pose.timestamp)
-            .mapOrigin(frame.pose.longitude, frame.pose.latitude, frame.pose.altitude)
-            .position(0,0,0).orientation(0,0,frame.pose.heading);
-      //  console.log(frame.ProjectedPosition.Path);
-
-        xvizBuilder.primitive('/vehicle/trajectory').polyline(frame.ProjectedPosition.point).style({
-            stroke_color: '#009500',//rgba(0, 150, 0, 0.3)
-            stroke_width: 1.5 });
-
-
-
-        //this is for displaying the positon of the obsatcle in space
-
-        if (frame.Objectposition.detected == 1 && frame.Objectposition.x != 0){                   
-            xvizBuilder.primitive('/Obstcale/position').polygon([[frame.Objectposition.x, frame.Objectposition.y, 0],[frame.Objectposition.x, frame.Objectposition.y, 2],[frame.Objectposition.x + 1, frame.Objectposition.y+1, 2]]).style({
-                stroke_color: '#ff0000',//rgba(150, 0, 0, 0.3)
-                stroke_width: 1.5
-            });
+        xvizBuilder.pose('/vehicle_pose').timestamp(_locationCache.timestamp)
+            .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            .position(0,0,0).orientation(0,0,_locationCache.heading);
+        if (_trajectoryCache) {
+            xvizBuilder.primitive('/vehicle/trajectory').polyline(_trajectoryCache);
+        } else {
+            //xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]);
         }
-        
-        
-
-        //xvizBuilder.primitive('/camera/image_01').image(_mockImage, "jpg").dimensions(500, 231);
-	    const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
-        //console.log(`frame ${frameNum} is ready. `, xvizFrame);
+        if (_ObstaclesCache) {
+            //console.log("obstacle!!!", _ObstaclesCache[0]);
+            for (i=0;i<_ObstaclesCache.length;i++){
+                // build triangle around that obstacle location
+                xvizBuilder.primitive('/tracklets/objects').polygon([
+                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0],
+                    [_ObstaclesCache[i][0]+0.3, _ObstaclesCache[i][1]-0.3, 0],
+                    [_ObstaclesCache[i][0], _ObstaclesCache[i][1]+0.424, 0],
+                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0]
+                ]).style({height:1.5});
+            }
+        }
+        if (_cameraImageCache)
+        {
+            xvizBuilder.primitive('/camera/image_00').image(_cameraImageCache, "jpg");
+            //_newCameraImageFlag = false;
+            //console.log("serving image ", _cameraImageCache.length);
+        }
+        //const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(),{});
+        const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
+        //console.log( xvizFrame);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
         });
-        // after serve, delete the previous frame from the cache
-        // so the cache always store 2 frames in history
-        _frameCache.delete(frameNum-1);
-        //console.log(frameNum-1, "deleted")
-        return;
     }
     return;
 }
@@ -243,7 +192,11 @@ class ConnectionContext {
         }
     }
     sendFrame(frame) {
-        this.ws.send(frame, {compress: true});
+        if (frame instanceof Buffer) {
+            this.ws.send(frame);
+        } else {
+            this.ws.send(frame, {compress: true});
+        }
         this.log("< sent frame.")
     }
 }
@@ -269,50 +222,24 @@ module.exports = {
         _wss.close();
     },
 
-    updateLocation: function(frameNum, car_info, obs_info, Car_Odom,Car_Path, time) {
+    updateLocation: function(lat, lng, alt, heading, time) {
+        addLocationToCache(lat, lng, alt, heading, time);
         
-        Planned_Path = ProjectedPath(Car_Odom,Car_Path,time)
-        
-        addLocationToFrame(frameNum, car_info, obs_info, Planned_Path, time);
-        tryServeFrame(frameNum);
+    },
 
+    updateCarPath: function(positions) {
+        _trajectoryCache = positions;
+    },
 
+    updateObstacles: function(positions) {
+        _ObstaclesCache = positions;
+    },
 
+    updateCameraImage: function(imagedata) {
+        //console.log("new image ", imagedata.length);
+        _cameraImageCache = imagedata;
+        //_newCameraImageFlag = true;
+        tryServeFrame();
     }
-    
+
 };
-
-function ProjectedPath(Car_Odom,Car_Path,time){
-   
-    var  i, j,Lg, Lg_Odom ;
-    var Look_Ahead_dist = 5; //this is the distance for 1m  
-    var points = 8; // change this if you want the car to have more or less points. The more points you add the further the car will look in the future. 
-    
-    Lg = Car_Path.length;
-    Lg_Odom = Car_Odom.length;
-    var Path = [];
-    var Path_Point=[];
-
-    
-    for (i = 0; i <= Lg - 1; i++) {
-
-
-
-            for (j = 0; j <= Lg_Odom - 1; j++) {
-                Path_Point[j] = Car_Path[i][j] - Car_Odom[j];
-
-            }
-            //check if a point exists behind the car
-        if (Path_Point[0] < 0) {
-           //console.log(Path_Point[0])
-            Path[i] = [0, 0, 0];
-        } else {
-        Path[i] = [Path_Point[0], Path_Point[1], 0] 
-                }
-
-
-
-        
-    }
-    return Path;
-}

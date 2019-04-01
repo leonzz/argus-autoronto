@@ -23,6 +23,7 @@
 import React, {PureComponent} from 'react';
 import {render} from 'react-dom';
 
+import {XVIZLiveLoader} from 'streetscape.gl';
 import {setXVIZConfig} from '@xviz/parser';
 import {
   LogViewer,
@@ -39,12 +40,16 @@ import {XVIZ_CONFIG, APP_SETTINGS, MAPBOX_TOKEN, MAP_STYLE, XVIZ_STYLE, CAR} fro
 
 setXVIZConfig(XVIZ_CONFIG);
 
-// __IS_STREAMING__ and __IS_LIVE__ are defined in webpack.config.js
-const exampleLog = require(__IS_STREAMING__
-  ? './log-from-stream'
-  : __IS_LIVE__
-    ? './log-from-live'
-    : './log-from-file').default;
+const exampleLog = new XVIZLiveLoader({
+  logGuid: 'mock',
+  bufferLength: 4,
+  serverConfig: {
+    defaultLogLength: 5,
+    serverUrl: 'ws://localhost:8081'
+  },
+  worker: true,
+  maxConcurrency: 2
+});
 
 class Example extends PureComponent {
   state = {
@@ -72,8 +77,6 @@ class Example extends PureComponent {
         <div id="control-panel">
           <XVIZPanel log={log} name="Camera" />
           <hr />
-          <XVIZPanel log={log} name="Metrics" />
-          <hr />
           <Form
             data={APP_SETTINGS}
             values={this.state.settings}
@@ -89,35 +92,6 @@ class Example extends PureComponent {
               car={CAR}
               xvizStyles={XVIZ_STYLE}
               viewMode={VIEW_MODE[settings.viewMode]}
-            />
-            <div id="hud">
-              <TurnSignalWidget log={log} streamName="/vehicle/turn_signal" />
-              <hr />
-              <TrafficLightWidget log={log} streamName="/vehicle/traffic_light" />
-              <hr />
-              <MeterWidget
-                log={log}
-                streamName="/vehicle/acceleration"
-                label="Acceleration"
-                min={-4}
-                max={4}
-              />
-              <hr />
-              <MeterWidget
-                log={log}
-                streamName="/vehicle/velocity"
-                label="Speed"
-                getWarning={x => (x > 6 ? 'FAST' : '')}
-                min={0}
-                max={20}
-              />
-            </div>
-          </div>
-          <div id="timeline">
-            <PlaybackControl
-              width="100%"
-              log={log}
-              formatTimestamp={x => new Date(x).toUTCString()}
             />
           </div>
         </div>
