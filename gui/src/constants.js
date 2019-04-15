@@ -1,3 +1,7 @@
+// This file is modified based on the get-started example 
+// from github.com/uber/streetscape.gl
+// The following is the original license statement:
+//
 // Copyright (c) 2019 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,12 +24,25 @@
 import {CarMesh} from 'streetscape.gl';
 
 /* eslint-disable camelcase */
-export const MAPBOX_TOKEN = process.env.MapboxAccessToken; // eslint-disable-line
-
-export const MAP_STYLE = 'mapbox://styles/uberdata/cjfxhlikmaj1b2soyzevnywgs';//'mapbox://styles/mapbox/light-v9';
 
 export const XVIZ_CONFIG = {
+  //TIME_WINDOW: 0.2
   PLAYBACK_FRAME_RATE: 10
+};
+
+export const CONFIG_SETTINGS = {
+  serverURL: {
+    type: 'text',
+    title: 'ServerAddr'
+  },
+  mapToken: {
+    type: 'text',
+    title: 'Map Token'
+  },
+  mapStyle: {
+    type: 'text',
+    title: 'Map Style'
+  }
 };
 
 export const CAR = CarMesh.sedan({

@@ -22,10 +22,10 @@ const listener2 = new ROSLIB.Topic({
 });
 
 // for camera image
-const listener3 = new ROSLIB.Topic({
+/*const listener3 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/blackfly/image_color/compressed'
-});
+});*/
 
 // for car location in UTM coordinate and orientation
 const listener4 = new ROSLIB.Topic({
@@ -45,7 +45,7 @@ function gracefulShutdown() {
     console.log("shutting down rosbridge-xviz-connector");
     listener.unsubscribe();
     listener2.unsubscribe();
-    listener3.unsubscribe();
+    //listener3.unsubscribe();
     listener4.unsubscribe();
     listener5.unsubscribe();
     rosBridgeClient.close();
@@ -77,10 +77,10 @@ listener.subscribe(function(message) {
 listener2.subscribe(function(message) {
     plannedPath = message.poses;
 });
-listener3.subscribe(function(message) {
+/*listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
   xvizServer.updateCameraImage(message.data);
-});
+});*/
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
     let orientation = message.pose.pose.orientation;
