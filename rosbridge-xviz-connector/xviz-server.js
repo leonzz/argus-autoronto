@@ -48,6 +48,8 @@ let _connectionCounter = 1;
 let _connectionMap = new Map();
 // Global server object
 let _wss = null;
+// glober timer object to control XVIZ frame rate
+let _frameTimer = null;
 
 function connectionId() {
   const id = _connectionCounter;
@@ -192,16 +194,18 @@ module.exports = {
             const context = new ConnectionContext();
             context.initConnection(ws);
         });
+        //_frameTimer = setInterval(tryServeFrame, 30);
     },
 
     close: function(){
         console.log("xviz server shutting down");
+        //clearInterval(_frameTimer);
         _wss.close();
     },
 
     updateLocation: function(lat, lng, alt, heading, time) {
         addLocationToCache(lat, lng, alt, heading, time);
-        
+        tryServeFrame();
     },
 
     updateCarPath: function(positions) {
@@ -216,7 +220,6 @@ module.exports = {
         //console.log("new image ", imagedata.length);
         _cameraImageCache = imagedata;
         //_newCameraImageFlag = true;
-        tryServeFrame();
     }
 
 };

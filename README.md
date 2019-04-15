@@ -22,36 +22,37 @@ Diagram created with [Draw.io](https://www.draw.io/)
 
 - [GUI](gui): A web UI based on Uber's [streetscape.gl](https://github.com/uber/streetscape.gl) which is specialized to visualize data in XVIZ format. Right now we are using the demo example from [streetscape.gl](https://github.com/uber/streetscape.gl/tree/master/examples/get-started) with some minor changes.
 
-- Map Tile Server: A map tile server that reads local OpenStreemMap data files and serve map images to the GUI.
+- [map-tile-server](map-tile-server): A map tile server that reads local OpenStreemMap data files and serve map vector tiles to the GUI.
 
-## Build and Run
+## Running the Project
 
-Note: If running from a VM, make sure to enable 3D acceleration for it's graphics setting.
+![Screenshot of the GUI running](reports/screenshot.png)
 
 1. Follow the steps (1, 2, and 4) in [rosbridge-xviz-connector](rosbridge-xviz-connector) to start the neccessary services.
 
-2. Start the GUI
+2. Optionaly, to use our own map tile server, follow the steps in [map-tile-server](map-tile-server).
 
-    For best performance, use `cd gui && yarn build` to build the webpage into `gui/dist/` folder and then open `gui/dist/index.html` with a browser.
+3. Start the GUI
 
-    Or optionally, use the following step to run a dev server for easier debugging:
+    Open `gui/dist/index.html` in a browser that support WebGL. Note: if running from a VM, make sure to enable 3D acceleration for it's graphics setting.
+    
+    By default it will try to connect to servers running in `localhost`. To point to a different server address, simply input the IP or hostname in the `ServerAddr` input box on the left side of the page and click `Re-Connect`.
 
-    ```
-    cd gui
-    # please run yarn install before the next command to download dependencies
-    export MapboxAccessToken=<your mapbox token>
+    By default it uses public mapbox.com for map data. A mapbox access token is needed to properly display the map. Use the `Map Token` input box for changing the token.
 
-    # to run the dev server with debugging capability:
-    yarn start
-    ```
-
-    A browser window will automatically open and connect to the server from step 1.
+    To point to another map tile server, e.g. the one started in step 2, simply change the `Map Style` input box to the `style.json` served by that server, e.g. `http://localhost:10001/styles/osm-bright/style.json`
 
 
-3. In developement/simulation mode, play the rosbag to start piping in data, e.g.
+4. In developement/simulation mode, play the rosbag to start piping in data, e.g.
 
     ```
-    rosbag play /mnt/hgfs/argus-autoronto/project-data/_2019-01-18-15-19-31_public_roads.bag
+    rosbag play autoronto_rosbags/_2018-12-02-12-48-40_m1_tests.bag
     ```
 
-4. After starting the rosbag, if the UI is not updated, refresh the browser window. Since some rosbag recordings are very short, be sensitive to the timing of refresh and play.
+5. After starting the rosbag, if the UI is not updated, refresh the browser window. Since some rosbag recordings are very short, be sensitive to the timing of refresh and play.
+
+## Development
+
+The `gui` folder is a customized version of Uber's streetscape.gl get-started example.
+
+After making changes to its source. Run `yarn build` insude `gui/`. It will generate the new `gui/dist/` bundle.

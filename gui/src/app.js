@@ -1,3 +1,7 @@
+// This file is modified based on the get-started example 
+// from github.com/uber/streetscape.gl
+// The following is the original license statement:
+//
 // Copyright (c) 2019 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,29 +27,48 @@
 import React, {PureComponent} from 'react';
 import {render} from 'react-dom';
 
-import {XVIZLiveLoader} from 'streetscape.gl';
 import {setXVIZConfig} from '@xviz/parser';
-import {
-  LogViewer,
-  PlaybackControl,
-  MeterWidget,
-  TrafficLightWidget,
-  TurnSignalWidget,
-  XVIZPanel,
-  VIEW_MODE
-} from 'streetscape.gl';
-import {Form} from '@streetscape.gl/monochrome';
+import {XVIZLiveLoader,LogViewer,VIEW_MODE} from 'streetscape.gl';
+import {Form, Button} from '@streetscape.gl/monochrome';
 
-import {XVIZ_CONFIG, APP_SETTINGS, MAPBOX_TOKEN, MAP_STYLE, XVIZ_STYLE, CAR} from './constants';
+import ROSLIB from 'roslib';
+import {XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR} from './constants';
 
 setXVIZConfig(XVIZ_CONFIG);
+
+let params = (new URL(document.location)).searchParams;
+let server = params.get('server');
+let mapboxToken = params.get('maptoken');
+let mapStyleRef = params.get('mapstyle');
+if (!server) {
+  server = "localhost";
+}
+if (!mapboxToken) {
+  mapboxToken = "";
+}
+if (!mapStyleRef) {
+  mapStyleRef = 'mapbox://styles/uberdata/cjfxhlikmaj1b2soyzevnywgs';
+}
+
+// get camera image directly from rosbridge instead of xviz
+// for better performance
+const rosBridgeClient = new ROSLIB.Ros({
+  url : 'ws://'+server+':9090'
+});
+const roslistener = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/blackfly/image_color/compressed'
+});
+roslistener.subscribe(function(message) {
+  document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
+});
 
 const exampleLog = new XVIZLiveLoader({
   logGuid: 'mock',
   bufferLength: 4,
   serverConfig: {
     defaultLogLength: 5,
-    serverUrl: 'ws://localhost:8081'
+    serverUrl: 'ws://'+server+':8081'
   },
   worker: true,
   maxConcurrency: 2
@@ -56,7 +79,10 @@ class Example extends PureComponent {
     log: exampleLog.on('error', console.error),
     settings: {
       viewMode: 'PERSPECTIVE'
-    }
+    },
+    serverURL: server,
+    mapToken: mapboxToken,
+    mapStyle: mapStyleRef
   };
 
   componentDidMount() {
@@ -69,26 +95,55 @@ class Example extends PureComponent {
     });
   };
 
+  _onConfigChange = e => {
+    this.setState(e);
+  };
+
+  _onButtonClick = ()=>{
+    console.log("button click");
+    this.state.log.close();
+    let currentPage = window.location.href.split("?")[0];
+    console.log(currentPage);
+    let newPage = currentPage + "?server=" + this.state.serverURL;
+    if ( this.state.mapToken ) {
+      newPage = newPage + "&maptoken=" + this.state.mapToken;
+    }
+    if ( this.state.mapStyle ) {
+      newPage = newPage + "&mapstyle=" + this.state.mapStyle;
+    }
+    window.location.replace(newPage);
+  }
+
   render() {
-    const {log, settings} = this.state;
+    const {log, settings, mapStyle, mapToken} = this.state;
 
     return (
       <div id="container">
         <div id="control-panel">
-          <XVIZPanel log={log} name="Camera" />
+          <img src="" id="camera-image" width="100%" />
           <hr />
           <Form
             data={APP_SETTINGS}
             values={this.state.settings}
             onChange={this._onSettingsChange}
           />
+          <hr />
+          <Form
+            data={CONFIG_SETTINGS}
+            values={this.state}
+            onChange={this._onConfigChange}
+          />
+          <hr/>
+          <Button onClick={this._onButtonClick}>
+          Re-Connect
+          </Button>
         </div>
         <div id="log-panel">
           <div id="map-view">
             <LogViewer
               log={log}
-              mapboxApiAccessToken={MAPBOX_TOKEN}
-              mapStyle={MAP_STYLE}
+              mapboxApiAccessToken={mapToken}
+              mapStyle={mapStyle}
               car={CAR}
               xvizStyles={XVIZ_STYLE}
               viewMode={VIEW_MODE[settings.viewMode]}

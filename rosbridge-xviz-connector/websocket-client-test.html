@@ -11,7 +11,7 @@
   // -----------------
 
   var ros = new ROSLIB.Ros({
-    url : 'ws://localhost:9090'
+    url : 'ws://192.168.32.143:9090'
   });
 
   ros.on('connection', function() {
@@ -28,13 +28,13 @@
 
   // Subscribing to a Topic
   // ----------------------
-
+  var ts = performance.now();
   var listener = new ROSLIB.Topic({
     ros : ros,
     name : '/blackfly/image_color/compressed'
     //messageType : 'geometry_msgs/Twist'
   });
-
+  
   listener.subscribe(function(message) {
     document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
     //listener.unsubscribe();
@@ -47,8 +47,11 @@
   });
 
   listener2.subscribe(function(message) {
-    var msgNew = 'Received message on ' + listener2.name + JSON.stringify(message, null, 2) + "\n";
+    var te = performance.now();
+    let fps = 1000 / (te-ts);
+    var msgNew = fps + 'fps Received message on ' + listener2.name + JSON.stringify(message, null, 2) + "\n";
     document.getElementById("message-display").innerHTML = msgNew;
+    ts = te;
     //listener.unsubscribe();
   });
 
@@ -59,7 +62,7 @@
 <body>
   <h1>Rosbridge websocket client</h1>
   <p>Establishing connection with Rosbridge server...</p>
-  <img src="" id="camera-image" width="400" height="300" />
+  <img src="" id="camera-image" width="400" />
   <pre id="message-display">
   </pre>
 </body>
