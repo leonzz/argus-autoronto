@@ -24,6 +24,10 @@ Diagram created with [Draw.io](https://www.draw.io/)
 
 - [map-tile-server](map-tile-server): A map tile server that reads local OpenStreemMap data files and serve map vector tiles to the GUI.
 
+## Download our Rosbags:
+- [UTIAS testing rosbag](https://drive.google.com/open?id=13JbHYC4Vo3nI2bnJrLPBlyg8jzSQGvCU)
+- [Public road rosbag](https://drive.google.com/open?id=1PQoxqT4O00hPmEvyVhkZLWRReAcu2kle)
+
 ## Running the Project
 
 ![Screenshot of the GUI running](reports/screenshot.png)
